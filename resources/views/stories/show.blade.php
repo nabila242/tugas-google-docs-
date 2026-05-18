@@ -72,7 +72,7 @@
                             <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-lg shadow-amber-500/50 animate-ping"></span>
                             <span>Penulis Aktif</span>
                         </h3>
-                        <div class="space-y-3">
+                        <div id="active-users-list" class="space-y-3">
                             <!-- Owner -->
                             <div class="flex items-center gap-3">
                                 <div class="relative">
@@ -114,7 +114,7 @@
                         </h3>
 
                         <!-- Comments List -->
-                        <div class="flex-grow overflow-y-auto space-y-4 pr-1 max-h-[220px] mb-4 custom-scrollbar">
+                        <div id="comments-list" class="flex-grow overflow-y-auto space-y-4 pr-1 max-h-[220px] mb-4 custom-scrollbar">
                             @if($story->comments->isEmpty())
                                 <div class="text-center py-6 text-zinc-500 text-xs">
                                     Belum ada diskusi. Mulai diskusikan alur ceritanya!
@@ -152,13 +152,51 @@
         </div>
     </div>
 
-    <!-- Auto-save Debounce JavaScript Script -->
+    <!-- Auto-save & Real-Time Sync Debounce JavaScript Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             let timeout = null;
             const textarea = document.getElementById('story-content');
             const saveStatus = document.getElementById('save-status');
 
+            // Ambil ID User dan ID Cerita dari Laravel
+            const currentUserId = {{ Auth::id() }};
+            const storyId = {{ $story->id }};
+            const storyOwnerId = {{ $story->user_id }};
+            const activeUsersList = document.getElementById('active-users-list');
+            const commentsList = document.getElementById('comments-list');
+
+            // Format inisial nama
+            function getInitial(name) {
+                return name.substring(0, 1).toUpperCase();
+            }
+
+            // Update Tampilan User Online
+            function updateOnlineUsers(users) {
+                activeUsersList.innerHTML = '';
+                users.forEach(user => {
+                    const isOwner = user.id === storyOwnerId;
+                    const isMe = user.id === currentUserId;
+                    
+                    const userDiv = document.createElement('div');
+                    userDiv.className = 'flex items-center gap-3';
+                    userDiv.innerHTML = `
+                        <div class="relative">
+                            <div class="w-8 h-8 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-sm border border-amber-500/20">
+                                ${getInitial(user.name)}
+                            </div>
+                            <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-zinc-900"></span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-semibold text-zinc-200">${user.name} ${isMe ? '(Anda)' : ''}</span>
+                            <span class="text-[10px] text-zinc-500">${isOwner ? 'Pemilik Cerita' : 'Kolaborator'}</span>
+                        </div>
+                    `;
+                    activeUsersList.appendChild(userDiv);
+                });
+            }
+
+            // Input listener untuk Auto-Save
             textarea.addEventListener('input', function() {
                 saveStatus.innerHTML = '📝 Sedang mengetik...';
                 saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-amber-400 bg-amber-500/5 border border-amber-500/15 rounded-xl transition-all duration-300';
@@ -204,6 +242,60 @@
                     saveStatus.innerHTML = '❌ Kesalahan Jaringan';
                     saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-red-400 bg-red-500/5 border border-red-500/15 rounded-xl transition-all duration-300';
                 });
+            }
+
+            // Hubungkan ke Channel Reverb (Websocket)
+            if (window.Echo) {
+                window.Echo.join(`stories.${storyId}`)
+                    .here((users) => {
+                        window.onlineUsers = users;
+                        updateOnlineUsers(window.onlineUsers);
+                    })
+                    .joining((user) => {
+                        if (!window.onlineUsers.some(u => u.id === user.id)) {
+                            window.onlineUsers.push(user);
+                            updateOnlineUsers(window.onlineUsers);
+                        }
+                    })
+                    .leaving((user) => {
+                        window.onlineUsers = window.onlineUsers.filter(u => u.id !== user.id);
+                        updateOnlineUsers(window.onlineUsers);
+                    })
+                    .listen('StoryContentUpdated', (e) => {
+                        if (e.userId !== currentUserId) {
+                            textarea.value = e.content;
+                            saveStatus.innerHTML = '✨ Tersinkronisasi';
+                            saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-sky-400 bg-sky-500/5 border border-sky-500/15 rounded-xl transition-all duration-300';
+                            
+                            setTimeout(() => {
+                                saveStatus.innerHTML = '✅ Tersimpan';
+                                saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/5 border border-emerald-500/15 rounded-xl transition-all duration-300';
+                            }, 1500);
+                        }
+                    })
+                    .listen('CommentSent', (e) => {
+                        // Buat komentar baru di sidebar secara instan
+                        const newCommentDiv = document.createElement('div');
+                        newCommentDiv.className = 'bg-zinc-950/50 border border-zinc-800 p-3 rounded-2xl space-y-1.5';
+                        newCommentDiv.innerHTML = `
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-zinc-300">${e.userName}</span>
+                                <span class="text-[9px] text-zinc-500">Baru saja</span>
+                            </div>
+                            <p class="text-xs text-zinc-450 leading-relaxed break-words">
+                                ${e.comment.comment}
+                            </p>
+                        `;
+                        
+                        // Hapus tulisan "belum ada diskusi"
+                        const emptyState = commentsList.querySelector('.text-center');
+                        if (emptyState) {
+                            commentsList.innerHTML = '';
+                        }
+                        
+                        commentsList.appendChild(newCommentDiv);
+                        commentsList.scrollTop = commentsList.scrollHeight;
+                    });
             }
         });
     </script>

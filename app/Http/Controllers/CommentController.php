@@ -17,10 +17,13 @@ class CommentController extends Controller
             'comment' => 'required|string|max:1000',
         ]);
 
-        $story->comments()->create([
+        $comment = $story->comments()->create([
             'user_id' => Auth::id(),
             'comment' => $request->comment,
         ]);
+
+        $comment->load('user');
+        broadcast(new \App\Events\CommentSent($comment))->toOthers();
 
         return redirect()->route('stories.show', $story)
             ->with('success', 'Komentar berhasil ditambahkan!');

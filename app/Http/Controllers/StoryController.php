@@ -95,6 +95,8 @@ class StoryController extends Controller
             'content' => $request->content ?? '',
         ]);
 
+        broadcast(new \App\Events\StoryContentUpdated($story->id, $story->content, Auth::id()))->toOthers();
+
         return response()->json([
             'status' => 'success',
             'message' => 'Cerita berhasil disimpan.',
