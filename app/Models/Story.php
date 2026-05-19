@@ -12,6 +12,7 @@ class Story extends Model
         'genre',
         'description',
         'content',
+        'word_goal',
     ];
 
     public function user()

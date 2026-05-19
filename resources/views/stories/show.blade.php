@@ -78,6 +78,83 @@
                         </div>
                     </div>
 
+                    <!-- Target Menulis & Live Analytics (Fase 7) -->
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-xl space-y-5 relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-amber-500 to-rose-500"></div>
+                        
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-zinc-200 text-sm tracking-wide uppercase flex items-center gap-2">
+                                <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                                <span>Statistik & Target</span>
+                            </h3>
+                            <!-- Target Reached Badge -->
+                            <span id="goal-reached-badge" class="hidden px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse flex items-center gap-1">
+                                <span>🎯 Target Tercapai!</span>
+                            </span>
+                        </div>
+
+                        <!-- Mini stats grid -->
+                        <div class="grid grid-cols-3 gap-3 bg-zinc-950/40 p-3 rounded-2xl border border-zinc-850">
+                            <div class="text-center">
+                                <span class="block text-zinc-200 text-[10px] uppercase font-bold tracking-wider">Kata</span>
+                                <span id="stat-words" class="text-zinc-100 font-extrabold text-base transition-all duration-300">0</span>
+                            </div>
+                            <div class="text-center border-x border-zinc-850/60">
+                                <span class="block text-zinc-200 text-[10px] uppercase font-bold tracking-wider">Karakter</span>
+                                <span id="stat-chars" class="text-zinc-100 font-extrabold text-base transition-all duration-300">0</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="block text-zinc-200 text-[10px] uppercase font-bold tracking-wider">Baca</span>
+                                <span id="stat-reading" class="text-zinc-100 font-extrabold text-base transition-all duration-300">1 m</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar & Target Goal Settings -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-zinc-300">Progres Target:</span>
+                                <div class="flex items-center gap-1.5 font-bold">
+                                    <span id="goal-progress-text" class="text-zinc-200">0 / 0 kata</span>
+                                    <span id="goal-progress-percent" class="text-zinc-400 font-semibold">(0%)</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Glowing Progress Bar track -->
+                            <div class="w-full h-3 bg-zinc-950 rounded-full overflow-hidden p-[1px] border border-zinc-850">
+                                <div id="goal-progress-bar" class="h-full w-0 bg-gradient-to-r from-amber-500 to-rose-500 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(245,158,11,0.2)]"></div>
+                            </div>
+
+                            <!-- Target Settings Button (Owner/Editor only) -->
+                            <div class="flex justify-between items-center pt-2">
+                                <span class="text-[10px] text-zinc-400">Target Menulis: <strong id="current-word-goal-label" class="text-zinc-300">{{ $story->word_goal > 0 ? $story->word_goal : 'Tidak diatur' }}</strong></span>
+                                @if($canEdit)
+                                    <button type="button" id="btn-toggle-goal-form" class="text-[10px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 transition">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                        <span>Atur Target</span>
+                                    </button>
+                                @endif
+                            </div>
+
+                            <!-- Goal Setting Form Inline -->
+                            @if($canEdit)
+                                <div id="goal-setting-form-container" class="hidden pt-2 border-t border-zinc-850/60 transition-all duration-300">
+                                    <form id="form-update-goal" class="flex gap-2">
+                                        @csrf
+                                        <input type="number" id="input-word-goal" name="word_goal" placeholder="Target kata (cth: 500)" value="{{ $story->word_goal }}" min="0" max="100000" class="flex-grow bg-zinc-950 border border-zinc-850 rounded-xl px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-500 transition">
+                                        <button type="submit" id="btn-save-goal" class="bg-rose-500 hover:bg-rose-400 text-zinc-950 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-lg shadow-rose-500/10">
+                                            Simpan
+                                        </button>
+                                    </form>
+                                    <span id="goal-save-error" class="hidden text-[9px] text-red-400 font-semibold mt-1 block"></span>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+
                     <!-- Online/Active Participants -->
                     <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-xl">
                         <h3 class="font-bold text-zinc-200 mb-4 text-sm tracking-wide uppercase flex items-center gap-2">
@@ -233,7 +310,7 @@
                                             <span class="text-xs font-bold text-zinc-300">{{ $comment->user->name }}</span>
                                             <span class="text-[9px] text-zinc-500">{{ $comment->created_at->diffForHumans() }}</span>
                                         </div>
-                                        <p class="text-xs text-zinc-450 leading-relaxed break-words">
+                                        <p class="text-xs text-zinc-100 leading-relaxed break-words">
                                             {{ $comment->comment }}
                                         </p>
                                     </div>
@@ -379,6 +456,9 @@
                             saveStatus.innerHTML = '✨ Tersinkronisasi';
                             saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-sky-400 bg-sky-500/5 border border-sky-500/15 rounded-xl transition-all duration-300';
                             
+                            // Recalculate stats for Fase 7!
+                            updateStats();
+
                             setTimeout(() => {
                                 saveStatus.innerHTML = '✅ Tersimpan';
                                 saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/5 border border-emerald-500/15 rounded-xl transition-all duration-300';
@@ -394,7 +474,7 @@
                                 <span class="text-xs font-bold text-zinc-300">${e.userName}</span>
                                 <span class="text-[9px] text-zinc-500">Baru saja</span>
                             </div>
-                            <p class="text-xs text-zinc-450 leading-relaxed break-words">
+                            <p class="text-xs text-zinc-100 leading-relaxed break-words">
                                 ${e.comment.comment}
                             </p>
                         `;
@@ -521,6 +601,9 @@
                     if (data.status === 'success') {
                         textarea.value = data.content;
                         
+                        // Recalculate stats for Fase 7!
+                        updateStats();
+                        
                         // Update status
                         saveStatus.innerHTML = '✨ Versi Dipulihkan';
                         saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/5 border border-emerald-500/15 rounded-xl transition-all duration-300';
@@ -541,6 +624,131 @@
                     btnRestoreVersion.disabled = false;
                 });
             });
+
+            // ==========================================
+            // LOGIKA STATISTIK & TARGET MENULIS (FASE 7)
+            // ==========================================
+            let wordGoal = {{ (int) $story->word_goal }};
+            const statWords = document.getElementById('stat-words');
+            const statChars = document.getElementById('stat-chars');
+            const statReading = document.getElementById('stat-reading');
+            const goalProgressText = document.getElementById('goal-progress-text');
+            const goalProgressPercent = document.getElementById('goal-progress-percent');
+            const goalProgressBar = document.getElementById('goal-progress-bar');
+            const goalReachedBadge = document.getElementById('goal-reached-badge');
+
+            function countWords(str) {
+                if (!str || str.trim() === '') return 0;
+                return str.trim().split(/\s+/).length;
+            }
+
+            function updateStats() {
+                const text = textarea ? textarea.value : '';
+                const wordCount = countWords(text);
+                const charCount = text.length;
+                
+                // Estimasi membaca: rata-rata 200 kata per menit
+                const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
+                // Update UI Statistik
+                if (statWords) statWords.innerText = wordCount.toLocaleString();
+                if (statChars) statChars.innerText = charCount.toLocaleString();
+                if (statReading) statReading.innerText = readingTime + ' m';
+
+                // Update Progress Target
+                if (wordGoal > 0) {
+                    const percent = Math.min(100, Math.round((wordCount / wordGoal) * 100));
+                    
+                    if (goalProgressText) goalProgressText.innerText = `${wordCount.toLocaleString()} / ${wordGoal.toLocaleString()} kata`;
+                    if (goalProgressPercent) goalProgressPercent.innerText = `(${percent}%)`;
+                    
+                    if (goalProgressBar) {
+                        goalProgressBar.style.width = `${percent}%`;
+                        
+                        // Perubahan warna progress bar jika target tercapai!
+                        if (percent >= 100) {
+                            goalProgressBar.className = 'h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]';
+                            if (goalReachedBadge) goalReachedBadge.classList.remove('hidden');
+                        } else {
+                            goalProgressBar.className = 'h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(245,158,11,0.2)]';
+                            if (goalReachedBadge) goalReachedBadge.classList.add('hidden');
+                        }
+                    }
+                } else {
+                    if (goalProgressText) goalProgressText.innerText = `${wordCount.toLocaleString()} kata`;
+                    if (goalProgressPercent) goalProgressPercent.innerText = '';
+                    if (goalProgressBar) {
+                        goalProgressBar.style.width = '0%';
+                        goalProgressBar.className = 'h-full bg-gradient-to-r from-amber-500 to-rose-500 rounded-full transition-all';
+                    }
+                    if (goalReachedBadge) goalReachedBadge.classList.add('hidden');
+                }
+            }
+
+            // Panggil inisialisasi awal
+            updateStats();
+
+            // Panggil setiap kali pengguna mengetik
+            if (textarea) {
+                textarea.addEventListener('input', updateStats);
+            }
+
+            // Form update target menulis inline
+            const btnToggleGoalForm = document.getElementById('btn-toggle-goal-form');
+            const goalSettingFormContainer = document.getElementById('goal-setting-form-container');
+            const formUpdateGoal = document.getElementById('form-update-goal');
+            const inputWordGoal = document.getElementById('input-word-goal');
+            const currentWordGoalLabel = document.getElementById('current-word-goal-label');
+            const goalSaveError = document.getElementById('goal-save-error');
+
+            if (btnToggleGoalForm) {
+                btnToggleGoalForm.addEventListener('click', function() {
+                    goalSettingFormContainer.classList.toggle('hidden');
+                    if (!goalSettingFormContainer.classList.contains('hidden')) {
+                        inputWordGoal.focus();
+                    }
+                });
+            }
+
+            if (formUpdateGoal) {
+                formUpdateGoal.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    goalSaveError.classList.add('hidden');
+                    
+                    const newGoal = parseInt(inputWordGoal.value) || 0;
+
+                    fetch(`/stories/${storyId}/goal`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: JSON.stringify({
+                            word_goal: newGoal
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw err; });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            wordGoal = data.word_goal;
+                            currentWordGoalLabel.textContent = wordGoal > 0 ? wordGoal : 'Tidak diatur';
+                            goalSettingFormContainer.classList.add('hidden');
+                            updateStats();
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        goalSaveError.innerText = err.message || 'Gagal menyimpan target menulis.';
+                        goalSaveError.classList.remove('hidden');
+                    });
+                });
+            }
         });
     </script>
 

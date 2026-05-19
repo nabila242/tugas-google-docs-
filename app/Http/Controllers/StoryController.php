@@ -126,7 +126,11 @@ class StoryController extends Controller
             ]);
         }
 
-        broadcast(new \App\Events\StoryContentUpdated($story->id, $story->content, Auth::id()))->toOthers();
+        try {
+            broadcast(new \App\Events\StoryContentUpdated($story->id, $story->content, Auth::id()))->toOthers();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal menyiarkan update konten cerita via WebSocket: ' . $e->getMessage());
+        }
 
         return response()->json([
             'status' => 'success',
@@ -171,7 +175,11 @@ class StoryController extends Controller
         ]);
 
         // Picu siaran sinkronisasi agar layar kolaborator lain langsung berubah!
-        broadcast(new \App\Events\StoryContentUpdated($story->id, $story->content, Auth::id()))->toOthers();
+        try {
+            broadcast(new \App\Events\StoryContentUpdated($story->id, $story->content, Auth::id()))->toOthers();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal menyiarkan pemulihan versi cerita via WebSocket: ' . $e->getMessage());
+        }
 
         // Buat versi baru saat memulihkan, sebagai penanda riwayat pemulihan
         $story->versions()->create([
@@ -233,5 +241,32 @@ class StoryController extends Controller
         $collaborator->delete();
 
         return back()->with('success', 'Kolaborator berhasil dihapus.');
+    }
+
+    /**
+     * Update target menulis (word goal) untuk cerita (Fase 7).
+     */
+    public function updateGoal(Request $request, Story $story)
+    {
+        if (!$story->canEdit(Auth::id())) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda tidak memiliki izin untuk mengedit cerita ini.'
+            ], 403);
+        }
+
+        $request->validate([
+            'word_goal' => 'required|integer|min:0|max:100000',
+        ]);
+
+        $story->update([
+            'word_goal' => $request->word_goal,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Target menulis berhasil diperbarui.',
+            'word_goal' => $story->word_goal
+        ]);
     }
 }

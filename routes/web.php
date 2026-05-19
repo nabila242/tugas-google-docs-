@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
     // Rute Kolaborator Cerita (Fase 6)
     Route::post('/stories/{story}/collaborators', [StoryController::class, 'addCollaborator'])->name('stories.collaborators.store');
     Route::delete('/stories/{story}/collaborators/{collaborator}', [StoryController::class, 'removeCollaborator'])->name('stories.collaborators.destroy');
+
+    // Rute Target Menulis (Fase 7)
+    Route::put('/stories/{story}/goal', [StoryController::class, 'updateGoal'])->name('stories.goal.update');
 });
 
 require __DIR__.'/auth.php';

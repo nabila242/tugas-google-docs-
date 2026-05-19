@@ -23,7 +23,12 @@ class CommentController extends Controller
         ]);
 
         $comment->load('user');
-        broadcast(new \App\Events\CommentSent($comment))->toOthers();
+        
+        try {
+            broadcast(new \App\Events\CommentSent($comment))->toOthers();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal menyiarkan komentar via WebSocket: ' . $e->getMessage());
+        }
 
         return redirect()->route('stories.show', $story)
             ->with('success', 'Komentar berhasil ditambahkan!');
