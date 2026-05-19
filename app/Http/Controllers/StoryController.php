@@ -78,7 +78,7 @@ class StoryController extends Controller
      */
     public function show(Story $story)
     {
-        $story->load(['user', 'comments.user']);
+        $story->load(['user', 'comments.user', 'collaborators.user']);
         return view('stories.show', compact('story'));
     }
 
@@ -87,6 +87,13 @@ class StoryController extends Controller
      */
     public function update(Request $request, Story $story)
     {
+        if (!$story->canEdit(Auth::id())) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Anda tidak memiliki izin mengedit untuk cerita ini.'
+            ], 403);
+        }
+
         $request->validate([
             'content' => 'nullable|string',
         ]);
@@ -177,5 +184,54 @@ class StoryController extends Controller
             'message' => 'Cerita berhasil dipulihkan ke versi pilihan Anda.',
             'content' => $story->content,
         ]);
+    }
+
+    /**
+     * Tambah kolaborator baru berdasarkan email (Fase 6).
+     */
+    public function addCollaborator(Request $request, Story $story)
+    {
+        if (Auth::id() !== $story->user_id) {
+            return back()->with('error', 'Hanya pemilik cerita yang dapat mengelola kolaborator.');
+        }
+
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ], [
+            'email.exists' => 'Akun dengan email tersebut tidak ditemukan di sistem.',
+        ]);
+
+        $user = \App\Models\User::where('email', $request->email)->firstOrFail();
+
+        // Cek jika kolaborator adalah pemilik sendiri
+        if ($user->id === $story->user_id) {
+            return back()->with('error', 'Anda adalah pemilik cerita ini, tidak perlu ditambahkan sebagai kolaborator.');
+        }
+
+        // Cek jika sudah terdaftar
+        if ($story->isCollaborator($user->id)) {
+            return back()->with('error', 'Pengguna tersebut sudah menjadi kolaborator cerita ini.');
+        }
+
+        $story->collaborators()->create([
+            'user_id' => $user->id,
+        ]);
+
+        return back()->with('success', 'Kolaborator berhasil ditambahkan!');
+    }
+
+    /**
+     * Hapus kolaborator (Fase 6).
+     */
+    public function removeCollaborator(Story $story, $collaboratorId)
+    {
+        if (Auth::id() !== $story->user_id) {
+            return back()->with('error', 'Hanya pemilik cerita yang dapat mengelola kolaborator.');
+        }
+
+        $collaborator = $story->collaborators()->findOrFail($collaboratorId);
+        $collaborator->delete();
+
+        return back()->with('success', 'Kolaborator berhasil dihapus.');
     }
 }

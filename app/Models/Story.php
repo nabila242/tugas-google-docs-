@@ -28,4 +28,19 @@ class Story extends Model
     {
         return $this->hasMany(StoryVersion::class)->orderBy('created_at', 'desc');
     }
+
+    public function collaborators()
+    {
+        return $this->hasMany(StoryCollaborator::class);
+    }
+
+    public function isCollaborator($userId)
+    {
+        return $this->collaborators()->where('user_id', $userId)->exists();
+    }
+
+    public function canEdit($userId)
+    {
+        return $this->user_id === $userId || $this->isCollaborator($userId);
+    }
 }

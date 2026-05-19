@@ -1,3 +1,7 @@
+@php
+    $canEdit = $story->canEdit(Auth::id());
+    $isOwner = Auth::id() === $story->user_id;
+@endphp
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -42,14 +46,22 @@
                     
                     <div class="mb-4 flex items-center justify-between text-xs text-zinc-500 border-b border-zinc-800 pb-3">
                         <span class="flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span class="w-2 h-2 rounded-full @if($canEdit) bg-emerald-500 animate-pulse @else bg-amber-500 @endif"></span>
                             <span>Papan Tulis Kolaborasi</span>
                         </span>
-                        <span>✍️ Mulai mengetik, tulisan Anda akan disimpan secara otomatis</span>
+                        @if($canEdit)
+                            <span>✍️ Mulai mengetik, tulisan Anda akan disimpan secara otomatis</span>
+                        @else
+                            <span class="px-2.5 py-1 bg-zinc-950 border border-zinc-850 text-amber-400 rounded-full font-bold flex items-center gap-1 shadow-sm">
+                                <span>🔒 Mode Membaca</span>
+                            </span>
+                        @endif
                     </div>
 
                     <!-- Large Textarea for Story Writing -->
-                    <textarea id="story-content" rows="22" placeholder="Mulailah menulis isi cerita kolaboratif ini di sini..." class="w-full flex-grow bg-zinc-950 border border-zinc-850 rounded-2xl p-6 text-zinc-100 placeholder-zinc-700 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all resize-none shadow-inner">{{ $story->content }}</textarea>
+                    <textarea id="story-content" rows="22" 
+                        @if(!$canEdit) disabled placeholder="👀 Mode Membaca — Anda tidak memiliki izin untuk mengedit cerita ini. Silakan hubungi pemilik untuk ditambahkan sebagai kolaborator." @else placeholder="Mulailah menulis isi cerita kolaboratif ini di sini..." @endif
+                        class="w-full flex-grow bg-zinc-950 border border-zinc-850 rounded-2xl p-6 text-zinc-100 placeholder-zinc-700 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all resize-none shadow-inner @if(!$canEdit) opacity-60 cursor-not-allowed @endif">{{ $story->content }}</textarea>
                 </div>
 
                 <!-- Sidebar Area (4 Cols) -->
@@ -102,6 +114,87 @@
                                 </div>
                             @endif
                         </div>
+                    </div>
+
+                    <!-- Collaborators Card (Fase 6) -->
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 class="font-bold text-zinc-200 text-sm tracking-wide uppercase flex items-center gap-2">
+                            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <span>Kolaborator</span>
+                        </h3>
+                        
+                        <!-- List of current collaborators -->
+                        <div class="space-y-3">
+                            <!-- Owner -->
+                            <div class="flex items-center justify-between text-xs bg-zinc-950/40 p-2.5 rounded-xl border border-zinc-850">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-[10px] border border-amber-500/20">
+                                        {{ strtoupper(substr($story->user->name, 0, 1)) }}
+                                    </div>
+                                    <span class="font-bold text-zinc-300">{{ $story->user->name }}</span>
+                                </div>
+                                <span class="px-2 py-0.5 text-[9px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full">Pemilik</span>
+                            </div>
+
+                            <!-- Invited Collaborators -->
+                            @if($story->collaborators->isEmpty())
+                                <div class="text-center py-2 text-zinc-500 text-xs italic">
+                                    Belum ada editor tambahan.
+                                </div>
+                            @else
+                                @foreach($story->collaborators as $collab)
+                                    <div class="flex items-center justify-between text-xs bg-zinc-950/20 p-2.5 rounded-xl border border-zinc-850">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-6 h-6 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold text-[10px] border border-purple-500/20">
+                                                {{ strtoupper(substr($collab->user->name, 0, 1)) }}
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="font-bold text-zinc-300">{{ $collab->user->name }}</span>
+                                                <span class="text-[9px] text-zinc-500">{{ $collab->user->email }}</span>
+                                            </div>
+                                        </div>
+
+                                        @if($isOwner)
+                                            <form action="{{ route('stories.collaborators.destroy', [$story->id, $collab->id]) }}" method="POST" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" onclick="return confirm('Hapus akses edit kolaborator ini?')" class="text-red-500 hover:text-red-400 p-1 hover:bg-zinc-800 rounded-lg transition" title="Hapus Kolaborator">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="px-2 py-0.5 text-[9px] font-bold bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded-full">Editor</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+
+                        <!-- Owner-only invitation form -->
+                        @if($isOwner)
+                            <div class="pt-2 border-t border-zinc-850">
+                                <form action="{{ route('stories.collaborators.store', $story->id) }}" method="POST" class="space-y-2">
+                                    @csrf
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">Undang Editor Baru</label>
+                                    <div class="flex gap-2">
+                                        <input type="email" name="email" placeholder="email@kolaborator.com" required class="flex-grow bg-zinc-950 border border-zinc-850 rounded-xl px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-amber-500 transition">
+                                        <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold px-3 py-1.5 rounded-xl text-xs transition shadow-lg shadow-amber-500/10">
+                                            Tambah
+                                        </button>
+                                    </div>
+                                    @if(session('success'))
+                                        <p class="text-[10px] text-emerald-400 font-semibold mt-1">✓ {{ session('success') }}</p>
+                                    @endif
+                                    @if(session('error'))
+                                        <p class="text-[10px] text-red-400 font-semibold mt-1">✗ {{ session('error') }}</p>
+                                    @endif
+                                </form>
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Version History Widget (Fase 5) -->
@@ -211,15 +304,20 @@
             }
 
             // Input listener untuk Auto-Save
-            textarea.addEventListener('input', function() {
-                saveStatus.innerHTML = '📝 Sedang mengetik...';
+            if (textarea && !textarea.disabled) {
+                textarea.addEventListener('input', function() {
+                    saveStatus.innerHTML = '📝 Sedang mengetik...';
+                    saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-amber-400 bg-emerald-500/5 border border-emerald-500/15 rounded-xl transition-all duration-300';
+                    
+                    clearTimeout(timeout);
+                    timeout = setTimeout(function() {
+                        saveContent();
+                    }, 1000); // Debounce 1 detik
+                });
+            } else {
+                saveStatus.innerHTML = '🔒 Mode Membaca';
                 saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-amber-400 bg-amber-500/5 border border-amber-500/15 rounded-xl transition-all duration-300';
-                
-                clearTimeout(timeout);
-                timeout = setTimeout(function() {
-                    saveContent();
-                }, 1000); // Debounce 1 detik
-            });
+            }
 
             function saveContent() {
                 saveStatus.innerHTML = '⏳ Menyimpan...';
@@ -482,11 +580,19 @@
                     <div class="flex-grow bg-zinc-950 border border-zinc-850 rounded-2xl p-4 overflow-y-auto max-h-[220px] custom-scrollbar">
                         <pre id="version-content-preview" class="text-zinc-300 text-xs font-mono leading-relaxed whitespace-pre-wrap">Pilih versi di sebelah kiri untuk melihat isi pratinjau cerita...</pre>
                     </div>
+                    @if($canEdit)
                     <div class="mt-4 flex gap-3">
                         <button id="btn-restore-version" disabled class="flex-grow py-2.5 px-4 font-semibold text-xs text-zinc-950 bg-gradient-to-r from-purple-400 to-indigo-500 hover:from-purple-300 hover:to-indigo-400 disabled:from-zinc-800 disabled:to-zinc-850 disabled:text-zinc-600 rounded-xl transition shadow-lg shadow-indigo-500/10 cursor-not-allowed">
                             Pulihkan ke Versi Ini
                         </button>
                     </div>
+                    @else
+                    <div class="mt-4 flex gap-3">
+                        <div class="text-center w-full py-2.5 px-4 text-zinc-500 text-xs italic bg-zinc-950 border border-zinc-850 rounded-xl">
+                            👀 Mode Hanya Baca — Tidak Bisa Memulihkan
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>

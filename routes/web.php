@@ -28,6 +28,10 @@ Route::middleware('auth')->group(function () {
     // Rute Riwayat Versi Cerita (Version History)
     Route::get('/stories/{story}/versions', [StoryController::class, 'getVersions'])->name('stories.versions');
     Route::post('/stories/{story}/versions/{version}/restore', [StoryController::class, 'restoreVersion'])->name('stories.versions.restore');
+
+    // Rute Kolaborator Cerita (Fase 6)
+    Route::post('/stories/{story}/collaborators', [StoryController::class, 'addCollaborator'])->name('stories.collaborators.store');
+    Route::delete('/stories/{story}/collaborators/{collaborator}', [StoryController::class, 'removeCollaborator'])->name('stories.collaborators.destroy');
 });
 
 require __DIR__.'/auth.php';
