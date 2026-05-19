@@ -95,11 +95,87 @@ class StoryController extends Controller
             'content' => $request->content ?? '',
         ]);
 
+        // Logika pembuatan riwayat versi (Fase 5)
+        $lastVersion = $story->versions()->first();
+        $shouldCreateVersion = false;
+
+        if (!$lastVersion) {
+            $shouldCreateVersion = true;
+        } else {
+            // Cek jika penulisnya berbeda
+            if ($lastVersion->user_id !== Auth::id()) {
+                $shouldCreateVersion = true;
+            } 
+            // Atau jika versi terakhir disimpan lebih dari 2 menit yang lalu, dan isinya berubah
+            elseif ($lastVersion->created_at->lt(now()->subMinutes(2)) && $lastVersion->content !== $story->content) {
+                $shouldCreateVersion = true;
+            }
+        }
+
+        if ($shouldCreateVersion && ($story->content ?? '') !== '') {
+            $story->versions()->create([
+                'user_id' => Auth::id(),
+                'content' => $story->content,
+            ]);
+        }
+
         broadcast(new \App\Events\StoryContentUpdated($story->id, $story->content, Auth::id()))->toOthers();
 
         return response()->json([
             'status' => 'success',
             'message' => 'Cerita berhasil disimpan.',
+        ]);
+    }
+
+    /**
+     * Ambil riwayat versi cerita (Fase 5).
+     */
+    public function getVersions(Story $story)
+    {
+        $versions = $story->versions()
+            ->with('user')
+            ->get()
+            ->map(function ($version) {
+                return [
+                    'id' => $version->id,
+                    'user_name' => $version->user->name,
+                    'content' => $version->content,
+                    'length' => strlen($version->content),
+                    'time_ago' => $version->created_at->diffForHumans(),
+                    'created_at' => $version->created_at->format('d M Y, H:i'),
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'versions' => $versions,
+        ]);
+    }
+
+    /**
+     * Pulihkan cerita ke versi tertentu (Fase 5).
+     */
+    public function restoreVersion(Story $story, $versionId)
+    {
+        $version = $story->versions()->findOrFail($versionId);
+
+        $story->update([
+            'content' => $version->content,
+        ]);
+
+        // Picu siaran sinkronisasi agar layar kolaborator lain langsung berubah!
+        broadcast(new \App\Events\StoryContentUpdated($story->id, $story->content, Auth::id()))->toOthers();
+
+        // Buat versi baru saat memulihkan, sebagai penanda riwayat pemulihan
+        $story->versions()->create([
+            'user_id' => Auth::id(),
+            'content' => $story->content,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cerita berhasil dipulihkan ke versi pilihan Anda.',
+            'content' => $story->content,
         ]);
     }
 }

@@ -104,6 +104,20 @@
                         </div>
                     </div>
 
+                    <!-- Version History Widget (Fase 5) -->
+                    <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-xl space-y-4">
+                        <h3 class="font-bold text-zinc-200 text-sm tracking-wide uppercase flex items-center gap-2">
+                            <svg class="w-4 h-4 text-zinc-550" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Riwayat Versi</span>
+                        </h3>
+                        <p class="text-xs text-zinc-500">Lihat versi penulisan sebelumnya atau pulihkan isi cerita Anda.</p>
+                        <button type="button" id="btn-open-versions" class="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-center border border-zinc-800 hover:border-zinc-700 bg-zinc-950 text-zinc-300 hover:text-zinc-150 transition shadow-inner flex items-center justify-center gap-2">
+                            📜 Buka Riwayat Versi
+                        </button>
+                    </div>
+
                     <!-- Comment Section -->
                     <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 shadow-xl flex flex-col max-h-[500px]">
                         <h3 class="font-bold text-zinc-200 mb-4 text-sm tracking-wide uppercase flex items-center gap-2">
@@ -297,8 +311,186 @@
                         commentsList.scrollTop = commentsList.scrollHeight;
                     });
             }
+
+            // JavaScript Riwayat Versi (Fase 5)
+            const versionsModal = document.getElementById('versions-modal');
+            const btnOpenVersions = document.getElementById('btn-open-versions');
+            const btnCloseVersions = document.getElementById('btn-close-versions');
+            const versionsTimelineList = document.getElementById('versions-timeline-list');
+            const versionContentPreview = document.getElementById('version-content-preview');
+            const btnRestoreVersion = document.getElementById('btn-restore-version');
+
+            let selectedVersionId = null;
+
+            btnOpenVersions.addEventListener('click', function() {
+                versionsModal.classList.remove('hidden');
+                loadVersions();
+            });
+
+            btnCloseVersions.addEventListener('click', function() {
+                versionsModal.classList.add('hidden');
+                selectedVersionId = null;
+                versionContentPreview.textContent = 'Pilih versi di sebelah kiri untuk melihat isi pratinjau cerita...';
+                btnRestoreVersion.disabled = true;
+                btnRestoreVersion.classList.add('cursor-not-allowed');
+            });
+
+            function loadVersions() {
+                versionsTimelineList.innerHTML = '<div class="text-center py-6 text-zinc-500 text-xs">⏳ Memuat riwayat versi...</div>';
+                
+                fetch(`/stories/${storyId}/versions`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        renderVersionsList(data.versions);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    versionsTimelineList.innerHTML = '<div class="text-center py-6 text-red-500 text-xs">❌ Gagal memuat riwayat versi</div>';
+                });
+            }
+
+            function renderVersionsList(versions) {
+                if (versions.length === 0) {
+                    versionsTimelineList.innerHTML = '<div class="text-center py-6 text-zinc-500 text-xs">Belum ada riwayat versi tersimpan. Teruslah menulis untuk mencatat perubahan!</div>';
+                    return;
+                }
+
+                versionsTimelineList.innerHTML = '';
+                versions.forEach((ver, index) => {
+                    const verItem = document.createElement('div');
+                    verItem.className = 'p-3 bg-zinc-950/40 border border-zinc-850 hover:border-purple-500/50 rounded-2xl cursor-pointer transition flex items-start gap-3 relative';
+                    verItem.dataset.id = ver.id;
+                    
+                    const markerColor = index === 0 ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-purple-500 shadow-purple-500/50';
+                    const markerLabel = index === 0 ? 'Terbaru' : `Versi #${versions.length - index}`;
+
+                    verItem.innerHTML = `
+                        <div class="relative pt-1">
+                            <span class="w-2 h-2 rounded-full ${markerColor} shadow-lg block"></span>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-zinc-200">${ver.user_name}</span>
+                                <span class="px-2 py-0.5 text-[9px] font-semibold bg-zinc-900 border border-zinc-800 text-zinc-400 rounded-full">${markerLabel}</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-[10px] text-zinc-500">${ver.time_ago}</span>
+                                <span class="text-[10px] text-purple-400">${ver.length} karakter</span>
+                            </div>
+                        </div>
+                    `;
+
+                    verItem.addEventListener('click', function() {
+                        // Reset all borders
+                        versionsTimelineList.querySelectorAll('div').forEach(el => el.classList.remove('border-purple-500'));
+                        verItem.classList.add('border-purple-500');
+                        
+                        // Select version
+                        selectedVersionId = ver.id;
+                        versionContentPreview.textContent = ver.content;
+                        
+                        btnRestoreVersion.disabled = false;
+                        btnRestoreVersion.classList.remove('cursor-not-allowed');
+                    });
+
+                    versionsTimelineList.appendChild(verItem);
+                });
+            }
+
+            btnRestoreVersion.addEventListener('click', function() {
+                if (!selectedVersionId) return;
+
+                btnRestoreVersion.innerHTML = '⏳ Memulihkan...';
+                btnRestoreVersion.disabled = true;
+
+                fetch(`/stories/${storyId}/versions/${selectedVersionId}/restore`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        textarea.value = data.content;
+                        
+                        // Update status
+                        saveStatus.innerHTML = '✨ Versi Dipulihkan';
+                        saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/5 border border-emerald-500/15 rounded-xl transition-all duration-300';
+                        
+                        // Close modal
+                        btnCloseVersions.click();
+                        
+                        setTimeout(() => {
+                            saveStatus.innerHTML = '✅ Tersimpan';
+                            saveStatus.className = 'px-3.5 py-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/5 border border-emerald-500/15 rounded-xl transition-all duration-300';
+                        }, 2000);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Gagal memulihkan versi cerita.');
+                    btnRestoreVersion.innerHTML = 'Pulihkan ke Versi Ini';
+                    btnRestoreVersion.disabled = false;
+                });
+            });
         });
     </script>
+
+    <!-- Version History Modal Overlay (Fase 5) -->
+    <div id="versions-modal" class="fixed inset-0 z-50 hidden bg-zinc-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl relative">
+            <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+            
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-zinc-850 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-zinc-100 flex items-center gap-2">
+                        <span>📜 Riwayat Versi Cerita</span>
+                    </h3>
+                    <p class="text-xs text-zinc-500 mt-1">Daftar riwayat perubahan teks cerita ini oleh kolaborator.</p>
+                </div>
+                <button id="btn-close-versions" class="p-2 hover:bg-zinc-800 rounded-xl transition text-zinc-400 hover:text-zinc-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Content -->
+            <div class="p-6 flex flex-col md:flex-row gap-6 max-h-[500px] overflow-hidden">
+                <!-- Version Timeline List -->
+                <div class="w-full md:w-1/2 flex flex-col">
+                    <h4 class="text-xs font-bold uppercase text-zinc-550 mb-3 tracking-wider">Garis Waktu Versi</h4>
+                    <div id="versions-timeline-list" class="flex-grow overflow-y-auto space-y-3 pr-1 max-h-[300px] custom-scrollbar">
+                        <!-- Diisi dinamis via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Preview Area -->
+                <div class="w-full md:w-1/2 flex flex-col border-t md:border-t-0 md:border-l border-zinc-850 pt-4 md:pt-0 md:pl-6">
+                    <h4 class="text-xs font-bold uppercase text-zinc-550 mb-3 tracking-wider">Pratinjau Isi</h4>
+                    <div class="flex-grow bg-zinc-950 border border-zinc-850 rounded-2xl p-4 overflow-y-auto max-h-[220px] custom-scrollbar">
+                        <pre id="version-content-preview" class="text-zinc-300 text-xs font-mono leading-relaxed whitespace-pre-wrap">Pilih versi di sebelah kiri untuk melihat isi pratinjau cerita...</pre>
+                    </div>
+                    <div class="mt-4 flex gap-3">
+                        <button id="btn-restore-version" disabled class="flex-grow py-2.5 px-4 font-semibold text-xs text-zinc-950 bg-gradient-to-r from-purple-400 to-indigo-500 hover:from-purple-300 hover:to-indigo-400 disabled:from-zinc-800 disabled:to-zinc-850 disabled:text-zinc-600 rounded-xl transition shadow-lg shadow-indigo-500/10 cursor-not-allowed">
+                            Pulihkan ke Versi Ini
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Custom Scrollbar Style -->
     <style>

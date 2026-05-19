@@ -24,6 +24,10 @@ Route::middleware('auth')->group(function () {
 
     // Rute Komentar
     Route::post('/stories/{story}/comments', [CommentController::class, 'store'])->name('comments.store');
+
+    // Rute Riwayat Versi Cerita (Version History)
+    Route::get('/stories/{story}/versions', [StoryController::class, 'getVersions'])->name('stories.versions');
+    Route::post('/stories/{story}/versions/{version}/restore', [StoryController::class, 'restoreVersion'])->name('stories.versions.restore');
 });
 
 require __DIR__.'/auth.php';

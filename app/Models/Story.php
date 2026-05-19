@@ -23,4 +23,9 @@ class Story extends Model
     {
         return $this->hasMany(Comment::class);
     }
+
+    public function versions()
+    {
+        return $this->hasMany(StoryVersion::class)->orderBy('created_at', 'desc');
+    }
 }
